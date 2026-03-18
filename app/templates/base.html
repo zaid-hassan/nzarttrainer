@@ -2,19 +2,64 @@
 <html lang="en-NZ">
 <head>
 <title>NZART Exam Trainer{% block Title %}{% endblock %}</title>
-<link href="{{ url_for('static', filename='s.css') }}" rel="stylesheet" type="text/css">
-<meta id="meta" name="viewport" content="width=device-width, initial-scale=1.0">
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Practice for the New Zealand Amateur Radio Licence exam.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<link href="{{ url_for('static', filename='s.css') }}" rel="stylesheet">
 {%- block Head %}{% endblock %}
 </head>
-<body>
+<body class="site-page">
 
-<a href="{{ url_for('Index') }}"><h1>NZART Exam Trainer</h1></a>
+<header id="site-header" role="banner">
+  <a href="{{ url_for('Index') }}" class="brand" aria-label="NZART Exam Trainer home">
+    <span class="brand-call">NZ</span>
+    <span class="brand-name">ART</span>
+    <span class="brand-bar" aria-hidden="true"></span>
+    <span class="brand-sub">Exam Trainer</span>
+  </a>
+  <div class="header-ctrls">
+    <button class="ctrl-btn" id="btn-font" aria-label="Toggle large font" title="Larger text" aria-pressed="false">A⁺</button>
+    <button class="ctrl-btn" id="btn-theme" aria-label="Toggle dark mode" title="Dark/light">◑</button>
+  </div>
+</header>
 
 {%- block Content %}{% endblock %}
 
-<footer>{% if Seed %}Generator Seed; <kbd>{{ Seed }}</kbd><br>
-{% endif %}<a href="https://flic.kr/p/ibcYNB">Background Image &copy; Greg "gvgoebel" Goebel 2012 CC BY-SA 2.0</a></footer>
+<footer id="site-footer" role="contentinfo">
+  <span>{% if Seed %}Seed: <kbd>{{ Seed }}</kbd>{% endif %}</span>
+  <a href="https://flic.kr/p/ibcYNB" class="footer-credit">Background &copy; Greg Goebel 2012 CC BY-SA 2.0</a>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+  /* Font toggle */
+  var fb = document.getElementById('btn-font');
+  if(fb){
+    if(localStorage.getItem('nz-font')) document.body.classList.add('font-lg');
+    fb.setAttribute('aria-pressed', document.body.classList.contains('font-lg') ? 'true' : 'false');
+    fb.addEventListener('click', function(){
+      var on = document.body.classList.toggle('font-lg');
+      fb.setAttribute('aria-pressed', on ? 'true' : 'false');
+      localStorage.setItem('nz-font', on ? '1' : '');
+    });
+  }
+  /* Theme toggle — site pages are always light; this is a stub */
+  var tb = document.getElementById('btn-theme');
+  if(tb){
+    tb.addEventListener('click', function(){
+      var msg = document.createElement('div');
+      msg.style.cssText = 'position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#1A1916;color:#F0EBE0;font-family:monospace;font-size:12px;padding:8px 16px;border-radius:8px;z-index:9999';
+      msg.textContent = 'Dark mode active during exam';
+      document.body.appendChild(msg);
+      setTimeout(function(){ msg.remove(); }, 2000);
+    });
+  }
+})();
+</script>
 
 </body>
 </html>

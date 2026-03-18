@@ -1,54 +1,206 @@
-{% extends "base.html" %}
+<!DOCTYPE HTML>
+<html lang="en-NZ">
+<head>
+<title>NZART Exam Trainer — Exam</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<link href="{{ url_for('static', filename='s.css') }}" rel="stylesheet">
+<noscript><style>.jsonly{display:none !important}</style></noscript>
+<script>/* Restore theme before first paint to prevent flash */
+(function(){if(localStorage.getItem('nz-exam-light'))document.documentElement.setAttribute('data-exam-light','1');})();
+</script>
+<script src="{{ url_for('static', filename='exam.js') }}" defer></script>
+</head>
 
-{%- block Title %} - Exam{% endblock %}
+<body class="exam-page">
 
-{%- block Head %}
-<noscript><style>.jsonly{display:none}</style></noscript>
-<script src="{{ url_for('static', filename='exam.js') }}"></script>
-{%- endblock %}
+<!-- ── HEADER ───────────────────────────────────────────────────── -->
+<header id="exam-hdr" role="banner">
+  <a href="{{ url_for('Index') }}" class="exam-brand" aria-label="NZART — return home">NZ·ART</a>
+  <span class="hdr-sep" aria-hidden="true"></span>
+  <span id="hdr-section" aria-label="Current section" aria-live="polite"></span>
 
-{% block Content -%}
-<h2>Exam</h2>
+  <div class="hdr-progress" role="status" aria-label="Exam progress" aria-live="polite">
+    <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+         aria-valuenow="0" id="hdr-progress-bar" aria-label="Questions completed">
+      <div class="progress-fill" id="hdr-progress-fill"></div>
+    </div>
+    <span id="hdr-count" aria-label="Question count">1 / {{ Total }}</span>
+  </div>
 
-<p>{% if 'tl' in request.args %}You have two hours to complete this exam which is displayed in the bottom right.<br>{% endif %}
-{%- if not 'aq' in request.args %}You will require {{ Needed }} of {{ Total }} correct answers in order to pass.<br>{% endif -%}
-<span class="jsonly">The numbers in the bottom right is the number of questions {% if 'rt' in request.args %}correct, {% endif %}answered, and the total.</span></p>
+  <div id="hdr-timer" class="t-hidden" role="timer" aria-label="Time remaining">2:00:00</div>
 
-<form method="post">
+  <button class="hdr-btn jsonly" id="btn-font-exam" aria-label="Toggle large font" aria-pressed="false" title="Font size">A⁺</button>
+  <button class="hdr-btn jsonly" id="btn-theme-exam" aria-label="Toggle light mode" aria-pressed="false" title="Light/dark mode">◑</button>
+  <button class="hdr-btn jsonly" id="btn-kbd"  aria-label="Keyboard shortcuts" title="Shortcuts (?)">⌨</button>
+</header>
 
-{%- set NS = {'Offset': 0} -%}
+<!-- ── QUESTION STAGE ───────────────────────────────────────────── -->
+<main id="question-stage" aria-label="Exam question" aria-live="polite">
 
-{#- Blocks -#}
+  <form method="post" id="exam-form" novalidate>
 
-{%- for Block in Blocks %}
-{% set BlockIndex = loop.index0 %}
-<h3 id="{{ Data[BlockIndex]['TagName'] }}">{{ Data[BlockIndex]['Title'] }} &ndash; {{ Block|length }}</h3>
+    {%- set NS = {'Offset': 0, 'FlatIdx': 0} -%}
 
-{#- Questions -#}
+    {%- for Block in Blocks -%}
+    {%- set BlockIndex = loop.index0 -%}
 
-{%- for Index in Block %}
-{% set Question = Data[BlockIndex]['Questions'][Index] %}
-<fieldset>
-<h4>{{ Question['Question'] }}</h4>
-{%- if 'Image' in Question %}
-<img src="{{ url_for('static', filename=Question['Image']) }}" alt="Figure">
-{%- endif -%}
+      {%- for Index in Block -%}
+      {%- set Question = Data[BlockIndex]['Questions'][Index] -%}
+      {%- set FormName = NS.Offset + Index -%}
 
-{#- Choices #}
-<ul>
-{% for Choice in Question['Choices'] -%}
-<li><label><input type="radio" name="{{ NS.Offset + Index }}" value="{{ loop.index0 }}">{{ Choice }}</label></li>
-{% endfor -%}
-</ul>
-</fieldset>
-{%- endfor -%}
+      <fieldset
+        class="q-slide"
+        id="q{{ FormName }}"
+        data-qi="{{ NS.FlatIdx }}"
+        data-form-name="{{ FormName }}"
+        data-block="{{ Data[BlockIndex]['Title'] }}"
+        aria-label="Question {{ NS.FlatIdx + 1 }} of {{ Total }}"
+      >
+        <div class="q-card">
 
-{%- set _dummy = NS.update({'Offset': NS.Offset + Data[BlockIndex]['Questions']|length}) -%}
+          <div class="q-meta">
+            <span class="q-num-badge" aria-hidden="true">Q {{ NS.FlatIdx + 1 }}</span>
+            <span class="q-block-tag">{{ Data[BlockIndex]['Title'] }}</span>
+            <span class="q-mark-badge" aria-label="Marked for review">★ Review</span>
+          </div>
 
-{%- endfor %}
+          <div class="q-text" id="qt{{ FormName }}">{{ Question['Question'] }}</div>
 
-{% if Seed %}<input type="hidden" name="s" value="{{ Seed }}">{% else %}<input type="hidden" name="aq" value="1">{% endif %}
-<input type="submit" value="Submit">
+          {%- if 'Image' in Question %}
+          <div class="q-img">
+            <img src="{{ url_for('static', filename=Question['Image']) }}"
+                 alt="Diagram for question {{ NS.FlatIdx + 1 }}">
+          </div>
+          {%- endif %}
 
-</form>
-{%- endblock %}
+          <ul class="choices" role="radiogroup" aria-labelledby="qt{{ FormName }}">
+            {%- for Choice in Question['Choices'] %}
+            <li class="choice">
+              <input
+                type="radio"
+                name="{{ FormName }}"
+                id="opt_{{ FormName }}_{{ loop.index0 }}"
+                value="{{ loop.index0 }}"
+                aria-label="{{ ['A','B','C','D'][loop.index0] }}: {{ Choice }}"
+              >
+              <label class="choice-btn" for="opt_{{ FormName }}_{{ loop.index0 }}">
+                <span class="choice-key" aria-hidden="true">{{ ['A','B','C','D'][loop.index0] }}</span>
+                <span class="choice-text">{{ Choice }}</span>
+              </label>
+            </li>
+            {%- endfor %}
+          </ul>
+
+          <!-- Real-time feedback (shown after answering) -->
+          <div class="rt-feedback jsonly" id="fb{{ FormName }}" aria-live="assertive"></div>
+
+        </div>
+      </fieldset>
+
+      {%- set _dummy = NS.update({'FlatIdx': NS.FlatIdx + 1}) -%}
+      {%- endfor -%}
+
+    {%- set _dummy = NS.update({'Offset': NS.Offset + Data[BlockIndex]['Questions']|length}) -%}
+    {%- endfor %}
+
+    {%- if Seed %}<input type="hidden" name="s" value="{{ Seed }}">
+    {%- else %}<input type="hidden" name="aq" value="1">{% endif %}
+
+    <!-- Hidden real submit (triggered programmatically) -->
+    <button type="submit" id="real-submit" style="display:none" aria-hidden="true"></button>
+
+  </form>
+
+</main>
+
+<!-- ── FOOTER NAV ───────────────────────────────────────────────── -->
+<footer id="exam-ftr" role="navigation" aria-label="Question navigation">
+  <button class="nav-btn" id="btn-prev" aria-label="Previous question (K or ←)" disabled>← Prev</button>
+
+  <div id="palette-strip" role="list" aria-label="Question palette"></div>
+
+  <button class="nav-btn btn-mark jsonly" id="btn-mark" aria-label="Mark for review (M)" aria-pressed="false" title="Mark for review (M)">☆</button>
+  <button class="nav-btn" id="btn-next" aria-label="Next question (J or →)">Next →</button>
+  <button class="nav-btn btn-submit jsonly" id="btn-submit" aria-label="Submit exam" title="Submit exam">✓</button>
+</footer>
+
+<!-- ── NOSCRIPT SUBMIT (visible when JS off) ────────────────────── -->
+<noscript>
+<div style="position:fixed;bottom:0;left:0;right:0;padding:12px 20px;background:#1A1916;border-top:1px solid #2C2924;display:flex;justify-content:center">
+  <button form="exam-form" type="submit"
+    style="padding:10px 32px;background:#5B7FFF;border:none;border-radius:8px;color:#fff;font-family:monospace;font-size:13px;font-weight:600;letter-spacing:.10em;text-transform:uppercase;cursor:pointer">
+    Submit Exam
+  </button>
+</div>
+</noscript>
+
+<!-- ── SUBMIT MODAL ─────────────────────────────────────────────── -->
+<div class="modal-veil" id="submit-modal" role="dialog" aria-modal="true" aria-labelledby="submit-modal-title">
+  <div class="modal-box">
+    <div class="modal-icon" aria-hidden="true">📋</div>
+    <h2 class="modal-title" id="submit-modal-title">Submit Exam?</h2>
+    <p class="modal-body">Once submitted you cannot change your answers. Review your progress below.</p>
+    <div class="modal-stats" role="group" aria-label="Summary">
+      <div class="modal-stat">
+        <span class="modal-stat-n" id="ms-answered">0</span>
+        <span class="modal-stat-l">Answered</span>
+      </div>
+      <div class="modal-stat">
+        <span class="modal-stat-n" id="ms-skipped">0</span>
+        <span class="modal-stat-l">Skipped</span>
+      </div>
+      <div class="modal-stat">
+        <span class="modal-stat-n" id="ms-marked">0</span>
+        <span class="modal-stat-l">Flagged</span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-back" id="modal-cancel">Continue</button>
+      <button class="btn-modal-go"   id="modal-confirm">Submit →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TIMEOUT MODAL ────────────────────────────────────────────── -->
+<div class="modal-veil" id="timeout-modal" role="alertdialog" aria-modal="true" aria-labelledby="timeout-title">
+  <div class="modal-box">
+    <div class="modal-icon" aria-hidden="true">⏰</div>
+    <h2 class="modal-title" id="timeout-title">Time's Up</h2>
+    <p class="modal-body">Your 2-hour limit has expired. Answers have been saved and will now be submitted.</p>
+    <div class="modal-actions">
+      <button class="btn-modal-primary" id="timeout-ok">View Results</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── KEYBOARD SHORTCUTS ───────────────────────────────────────── -->
+<div id="kbd-panel" role="complementary" aria-label="Keyboard shortcuts">
+  <div class="kbd-title">Keyboard Shortcuts</div>
+  <div class="kbd-row"><span>Next question</span>     <div class="kbd-keys"><kbd>J</kbd><kbd>→</kbd></div></div>
+  <div class="kbd-row"><span>Previous question</span> <div class="kbd-keys"><kbd>K</kbd><kbd>←</kbd></div></div>
+  <div class="kbd-row"><span>Select option</span>     <div class="kbd-keys"><kbd>1</kbd>–<kbd>4</kbd></div></div>
+  <div class="kbd-row"><span>Mark for review</span>   <div class="kbd-keys"><kbd>M</kbd></div></div>
+  <div class="kbd-row"><span>Submit exam</span>        <div class="kbd-keys"><kbd>Ctrl</kbd><kbd>↵</kbd></div></div>
+  <div class="kbd-row"><span>Clear answer</span>       <div class="kbd-keys"><kbd>Del</kbd></div></div>
+  <div class="kbd-row"><span>This panel</span>         <div class="kbd-keys"><kbd>?</kbd></div></div>
+</div>
+
+<!-- ── TOAST AREA ───────────────────────────────────────────────── -->
+<div id="toast-area" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Exam config injected for JS -->
+ <script id="exam-config" type="application/json">
+      {
+        "realTime": {{ realTime | default(false) | tojson }},
+        "timeLimit": {{ timeLimit | default(false) | tojson }},
+        "total": {{ Total | default(0) | tojson }},
+        "needed": {{ Needed | default(0) | tojson }}
+      }
+    </script>
+
+</body>
+</html>

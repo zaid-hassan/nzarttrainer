@@ -90,13 +90,19 @@ def PageNotFound(e):
 def Index():
     return render_template('index.html', MaxSeedSize = MaxSeedSize, Total = Total)
 
-@app.route('/exam', methods = [ 'GET', 'POST' ])
+@app.route('/exam', methods=['GET', 'POST'])
 def Exam():
 
+    # ✅ FIX: define config FIRST
+    real_time = 'rt' in request.args or 'rt' in request.form
+    time_limit = 'tl' in request.args or 'tl' in request.form
+
     AllQuestions = request.form.get('aq') or request.args.get('aq')
+
     if not AllQuestions:
 
         Seed = request.form.get('s') or request.args.get('s')
+
         if not Seed:
             if request.method == 'POST':
                 abort(403)
@@ -108,26 +114,30 @@ def Exam():
         T = Required
 
     else:
-
         Blocks = GenerateFullExam()
         Seed = None
         T = Total
 
+    # ============================
+    # POST (SUBMIT EXAM)
+    # ============================
     if request.method == 'POST':
 
-        # Grading.
         BlockAnswers = []
         Offset = Correct = BlockIndex = 0
+
         for B in Blocks:
             BCorrect = 0
 
             for I in B:
                 A = request.form.get(str(Offset + I))
+
                 if A:
                     try:
                         A = int(A)
                     except Exception:
                         pass
+
                 if A == Answers[Offset + I]:
                     Correct += 1
                     BCorrect += 1
@@ -136,10 +146,33 @@ def Exam():
             Offset += len(Data[BlockIndex]['Questions'])
             BlockIndex += 1
 
-        return render_template('results.html', Seed = Seed, Blocks = Blocks, Data = Data, Needed = Needed, Correct = Correct, Answers = Answers, BlockAnswers = BlockAnswers, Total = T)
+        return render_template(
+            'results.html',
+            Seed=Seed,
+            Blocks=Blocks,
+            Data=Data,
+            Needed=Needed,
+            Correct=Correct,
+            Answers=Answers,
+            BlockAnswers=BlockAnswers,
+            Total=T
+        )
 
-    return render_template('exam.html', Seed = Seed, Blocks = Blocks, Data = Data, Needed = Needed, Total = T)
+    # ============================
+    # GET (LOAD EXAM)
+    # ============================
+    return render_template(
+        'exam.html',
+        Seed=Seed,
+        Blocks=Blocks,
+        Data=Data,
+        Needed=Needed,
+        Total=T,
 
+        # ✅ FIXED PROPER CONFIG
+        realTime=real_time,
+        timeLimit=time_limit
+    )
 """
 @app.route('/answer/<int:ID>')
 def Answer(ID):

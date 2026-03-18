@@ -1,42 +1,156 @@
 {% extends "base.html" %}
 
-{%- block Title %} - Results{% endblock %}
+{%- block Title %} — Results{% endblock %}
 
 {%- block Content -%}
-<h2>Results</h2>
+<div class="results-wrap">
 
-<p>{% if not 'aq' in request.args %}{% if Correct >= Needed %}<b>Congratulations</b>, you've {% if Correct == Needed %}just {% endif %}passed the exam, getting a total of {{ Correct }} correct answers of the required {{ Needed }}<br>If you feel you can pass this test reliably, contact <a href="https://www.nzart.org.nz/">NZART</a> to sit the real thing.{% else %}Sorry, but you've failed. Only getting {{ Correct }} correct answer{% if Correct > 1 %}s{% endif %} of the required {{ Needed }}. Don't fret. Just keep practicing.{% endif %}{% else %}You got {{ Correct }} question{% if Correct > 1 %}s{% endif %} correct out of the {{ Total }}.{% endif %}<br>
-Below are your full results.</p>
-{% set NS = {'Offset': 0} -%}
+  {# ── Score ring values ── #}
+  {%- set circumference = 339.3 -%}
+  {%- if not 'aq' in request.args -%}
+    {%- set score_class = 'pass' if Correct >= Needed else 'fail' -%}
+    {%- set offset = (circumference * (1 - Correct / Total)) | round(1) -%}
+  {%- else -%}
+    {%- set score_class = 'practice' -%}
+    {%- set offset = (circumference * (1 - Correct / Total)) | round(1) -%}
+  {%- endif -%}
 
-{#- Blocks -#}
+  {# ── Hero score card ── #}
+  <div class="score-hero">
 
-{%- for Block in Blocks %}
-{% set BlockIndex = loop.index0 -%}
-<h3 id="{{ Data[BlockIndex]['TagName'] }}">{{ Data[BlockIndex]['Title'] }} &ndash; {{ BlockAnswers[BlockIndex] }} of {{ Block|length }}</h3>
-{# Questions -#}
+    {# SVG ring #}
+    <div class="score-ring-wrap" aria-hidden="true">
+      <svg class="score-ring-svg" viewBox="0 0 120 120">
+        <circle class="score-ring-bg" cx="60" cy="60" r="54"/>
+        <circle
+          class="score-ring-arc {{ score_class }}"
+          cx="60" cy="60" r="54"
+          stroke-dasharray="{{ circumference }}"
+          stroke-dashoffset="{{ offset }}"
+        />
+      </svg>
+      <div class="score-ring-label">
+        <span class="score-big">{{ Correct }}</span>
+        <span class="score-denom">/ {{ Total }}</span>
+      </div>
+    </div>
 
-{%- for Index in Block -%}
-{% set Question = Data[BlockIndex]['Questions'][Index] -%}
-{% set I = NS.Offset + Index -%}
-{% set A = request.form.get(I|string) %}
-<fieldset{% if A and A|int == Answers[I] %} class="c"{% elif A %} class="w"{% endif %}>
-<h4>{{ Question['Question'] }}</h4>
-{%- if 'Image' in Question %}
-<img src="{{ url_for('static', filename=Question['Image']) }}" alt="Figure">
-{%- endif -%}
+    {# Text summary #}
+    <div>
+      {%- if not 'aq' in request.args %}
+        {%- if Correct >= Needed %}
+          <div class="score-eyebrow pass">Exam Passed</div>
+          <h1 class="score-title">Congratulations{% if Correct == Needed %} — just!{% else %}!{% endif %}</h1>
+          <p class="score-desc">
+            You scored <strong>{{ Correct }} / {{ Total }}</strong>, meeting the required
+            <strong>{{ Needed }}</strong>.
+            When you can pass consistently, contact <a href="https://www.nzart.org.nz/">NZART</a> to sit the real exam.
+          </p>
+        {%- else %}
+          <div class="score-eyebrow fail">Not Passed</div>
+          <h1 class="score-title">Keep Practising</h1>
+          <p class="score-desc">
+            You scored <strong>{{ Correct }} / {{ Total }}</strong> — you needed
+            <strong>{{ Needed }}</strong> to pass. Review the questions below and try again.
+          </p>
+        {%- endif %}
+      {%- else %}
+        <div class="score-eyebrow practice">Practice Complete</div>
+        <h1 class="score-title">{{ Correct }} correct</h1>
+        <p class="score-desc">
+          You answered <strong>{{ Correct }}</strong> of <strong>{{ Total }}</strong> questions correctly.
+        </p>
+      {%- endif %}
 
-{#- Choices #}
-<ul>
-{% for Choice in Question['Choices'] -%}
-<li><label><input type="radio" disabled{% if A and A|int == loop.index0 %} checked{% endif %}>{% if loop.index0 == Answers[I] %}<b>{{ Choice }}</b>{% elif A and A|int == loop.index0 %}<s>{{ Choice }}</s>{% else %}{{ Choice }}{% endif %}</label></li>
-{% endfor -%}
-</ul>
-</fieldset>
-{% endfor -%}
+      <div class="score-cells">
+        <div class="score-cell">
+          <span class="sc-n">{{ Correct }}</span>
+          <span class="sc-l">Correct</span>
+        </div>
+        <div class="score-cell">
+          <span class="sc-n">{{ Total - Correct }}</span>
+          <span class="sc-l">Incorrect</span>
+        </div>
+        {%- if not 'aq' in request.args %}
+        <div class="score-cell">
+          <span class="sc-n">{{ Needed }}</span>
+          <span class="sc-l">Pass Mark</span>
+        </div>
+        {%- else %}
+        <div class="score-cell">
+          <span class="sc-n">{{ Total }}</span>
+          <span class="sc-l">Total</span>
+        </div>
+        {%- endif %}
+      </div>
+    </div>
+  </div>
 
-{%- set _dummy = NS.update({'Offset': NS.Offset + Data[BlockIndex]['Questions']|length}) -%}
+  {# ── Per-block results ── #}
+  {%- set NS = {'Offset': 0, 'QNum': 0} -%}
 
-{%- endfor %}
-<form action="{{ url_for('Index') }}"><input type="submit" value="Return to Front"></form>
+  {%- for Block in Blocks -%}
+  {%- set BlockIndex = loop.index0 -%}
+
+  <h2 class="res-block-hd" id="{{ Data[BlockIndex]['TagName'] }}">
+    {{ Data[BlockIndex]['Title'] }}
+    <span class="res-block-score">{{ BlockAnswers[BlockIndex] }} / {{ Block|length }}</span>
+  </h2>
+
+  {%- for Index in Block -%}
+  {%- set Question = Data[BlockIndex]['Questions'][Index] -%}
+  {%- set I = NS.Offset + Index -%}
+  {%- set A = request.form.get(I|string) -%}
+  {%- set _dummy = NS.update({'QNum': NS.QNum + 1}) -%}
+
+  <div class="res-card{% if A and A|int == Answers[I] %} res-c{% elif A %} res-w{% endif %}">
+
+    <div class="res-card-hd">
+      <span class="res-qnum">Q{{ NS.QNum }}</span>
+      {%- if A and A|int == Answers[I] %}
+        <span class="res-verdict v-c">✓ Correct</span>
+      {%- elif A %}
+        <span class="res-verdict v-w">✕ Incorrect</span>
+      {%- else %}
+        <span class="res-verdict v-s">— Skipped</span>
+      {%- endif %}
+    </div>
+
+    <div class="res-qtext">{{ Question['Question'] }}</div>
+
+    {%- if 'Image' in Question %}
+    <div style="margin-bottom:var(--s3);border-radius:var(--r-md);overflow:hidden;border:1px solid var(--sbdr);display:inline-block">
+      <img src="{{ url_for('static', filename=Question['Image']) }}" alt="Figure">
+    </div>
+    {%- endif %}
+
+    <ul class="res-choices">
+      {%- for Choice in Question['Choices'] -%}
+      {%- set is_correct = (loop.index0 == Answers[I]) -%}
+      {%- set is_user    = (A and A|int == loop.index0) -%}
+      <li class="res-choice{% if is_correct %} rc-correct{% elif is_user and not is_correct %} rc-wrong{% endif %}">
+        <span class="choice-key">{{ ['A','B','C','D'][loop.index0] }}</span>
+        <span class="choice-text">
+          {%- if is_correct %}<strong>{{ Choice }}</strong>
+          {%- elif is_user and not is_correct %}<s>{{ Choice }}</s>
+          {%- else %}{{ Choice }}{% endif %}
+        </span>
+      </li>
+      {%- endfor %}
+    </ul>
+
+  </div>
+
+  {%- endfor -%}
+  {%- set _dummy = NS.update({'Offset': NS.Offset + Data[BlockIndex]['Questions']|length}) -%}
+  {%- endfor %}
+
+  {# ── Return ── #}
+  <div class="res-return">
+    <form action="{{ url_for('Index') }}" method="get">
+      <button type="submit" class="btn-return">← Return to Home</button>
+    </form>
+  </div>
+
+</div>
 {%- endblock %}

@@ -1,11 +1,10 @@
 {% extends "base.html" %}
-
-{% block Title %} - Page Not Found{%- endblock %}
-
+{% block Title %} — Not Found{% endblock %}
 {% block Content %}
-
-<h2>Page Not Found</h2>
-
-<p>Return to <a href="{{ url_for('Index') }}">home</a>.<br>
-
-{%- endblock %}
+<div class="error-page" role="main">
+  <div class="error-num" aria-hidden="true">404</div>
+  <h1 class="error-title">Page Not Found</h1>
+  <p class="error-body">The page you're looking for doesn't exist or has been moved.</p>
+  <a href="{{ url_for('Index') }}" class="btn-return">← Back to Home</a>
+</div>
+{% endblock %}
